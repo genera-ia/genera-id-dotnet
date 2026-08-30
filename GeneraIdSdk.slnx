@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GeneraId.Sdk/GeneraId.Sdk.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GeneraId.Sdk.Tests/GeneraId.Sdk.Tests.csproj" />
+  </Folder>
+</Solution>
