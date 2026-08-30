@@ -1,0 +1,21 @@
+name: Release
+
+# Publica no NuGet quando uma tag v* é criada (ex.: v0.1.0).
+# Requer o secret NUGET_API_KEY (API key da conta dona do pacote GeneraId.Sdk).
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test GeneraIdSdk.slnx
+      - run: dotnet pack src/GeneraId.Sdk -c Release -o out
+      - run: dotnet nuget push out/*.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY"
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}

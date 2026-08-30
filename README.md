@@ -8,7 +8,11 @@ Requisitos: .NET 8+. Sem dependências além da BCL.
 
 ## Instalação
 
-Ainda não publicado no NuGet (aguardando definição da conta). Por enquanto, referencie o projeto ou o repositório `genera-ia/genera-id-dotnet`.
+```bash
+dotnet add package GeneraId.Sdk
+```
+
+Enquanto a primeira versão não sai no NuGet, referencie o projeto ou o repositório `genera-ia/genera-id-dotnet`.
 
 ## Management API
 
