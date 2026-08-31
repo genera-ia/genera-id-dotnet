@@ -184,4 +184,29 @@ public class GeneraIdClientTests
         Assert.Equal("acme", created.Tenant.Slug);
         Assert.Equal("gid_sk_nova", created.ApiKey);
     }
+
+    [Fact]
+    public async Task RotateKeys_envia_revoke_old_keys_now_conforme_o_modo()
+    {
+        const string payload =
+            """{"signingKeyThumbprint":"AB","oldKeysRetireAt":"2026-01-01T00:00:00+00:00","oldKeysRevokedImmediately":true}""";
+
+        var emergencyHandler = new FakeHttpHandler().Enqueue(HttpStatusCode.OK, payload);
+        using var emergencyClient = CreateClient(emergencyHandler);
+        var emergency = await emergencyClient.Tenant.RotateKeysAsync(revokeOldKeysNow: true);
+        var (request, body) = Assert.Single(emergencyHandler.Calls);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal("https://id.example.com/api/v1/tenant/keys/rotate", request.RequestUri!.ToString());
+        using var json = JsonDocument.Parse(body!);
+        Assert.True(json.RootElement.GetProperty("revokeOldKeysNow").GetBoolean());
+        Assert.True(emergency.OldKeysRevokedImmediately);
+
+        // Sem argumento: rotação de rotina (revokeOldKeysNow = false).
+        var routineHandler = new FakeHttpHandler().Enqueue(HttpStatusCode.OK, payload);
+        using var routineClient = CreateClient(routineHandler);
+        await routineClient.Tenant.RotateKeysAsync();
+        var (_, routineBody) = Assert.Single(routineHandler.Calls);
+        using var routineJson = JsonDocument.Parse(routineBody!);
+        Assert.False(routineJson.RootElement.GetProperty("revokeOldKeysNow").GetBoolean());
+    }
 }

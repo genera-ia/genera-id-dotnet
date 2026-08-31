@@ -36,6 +36,8 @@ var usuarios = await generaId.Users.ListAsync(query: "ana@acme");
 
 // Rotação de chaves de assinatura (30 dias de graça no JWKS)
 await generaId.Tenant.RotateKeysAsync();
+// Emergência (chave comprometida): aposenta as antigas na hora
+await generaId.Tenant.RotateKeysAsync(revokeOldKeysNow: true);
 ```
 
 Em apps ASP.NET, injete um `HttpClient` do `IHttpClientFactory` no segundo parâmetro do construtor. Recursos: `Tenant` (Get/Update/RotateKeys), `Tenants` (chave de plataforma), `ApiKeys`, `Applications`, `Webhooks`, `Users`, `Audits`. Erros viram `GeneraIdException` com `StatusCode` e `Body`; `429`/`5xx` têm retry automático com backoff (configure com `MaxRetries`).

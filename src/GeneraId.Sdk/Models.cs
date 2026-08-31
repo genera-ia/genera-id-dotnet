@@ -27,7 +27,11 @@ public sealed record UpdateTenantRequest(
     string? SettingsJson = null,
     string? CustomDomain = null);
 
-public sealed record KeyRotationResult(string SigningKeyThumbprint, DateTimeOffset OldKeysRetireAt);
+/// <summary><c>RevokeOldKeysNow = true</c> (emergência) aposenta as chaves antigas na hora.</summary>
+public sealed record RotateKeysRequest(bool RevokeOldKeysNow);
+
+public sealed record KeyRotationResult(
+    string SigningKeyThumbprint, DateTimeOffset OldKeysRetireAt, bool OldKeysRevokedImmediately = false);
 
 public sealed record ApiKey(
     Guid Id,

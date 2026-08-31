@@ -97,7 +97,16 @@ public sealed class GeneraIdClient : IDisposable
 
         /// <summary>Rotaciona as chaves de assinatura; as antigas seguem no JWKS por 30 dias.</summary>
         public Task<KeyRotationResult> RotateKeysAsync(CancellationToken cancellationToken = default) =>
-            client.SendAsync<KeyRotationResult>(HttpMethod.Post, "/api/v1/tenant/keys/rotate", null, cancellationToken);
+            RotateKeysAsync(revokeOldKeysNow: false, cancellationToken);
+
+        /// <summary>
+        /// Rotaciona as chaves de assinatura. Com <paramref name="revokeOldKeysNow"/> = true
+        /// (emergência, chave comprometida) as antigas são aposentadas na hora — saem do JWKS
+        /// e todo token assinado com elas passa a ser rejeitado; senão seguem no JWKS por 30 dias.
+        /// </summary>
+        public Task<KeyRotationResult> RotateKeysAsync(bool revokeOldKeysNow, CancellationToken cancellationToken = default) =>
+            client.SendAsync<KeyRotationResult>(HttpMethod.Post, "/api/v1/tenant/keys/rotate",
+                new RotateKeysRequest(revokeOldKeysNow), cancellationToken);
     }
 
     public sealed class TenantsResource(GeneraIdClient client)
