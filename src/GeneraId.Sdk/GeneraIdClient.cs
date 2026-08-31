@@ -156,6 +156,18 @@ public sealed class GeneraIdClient : IDisposable
 
         public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
             client.SendAsync<object?>(HttpMethod.Delete, $"/api/v1/webhooks/{id}", null, cancellationToken);
+
+        /// <summary>Histórico de entregas do endpoint (mais recente primeiro; retenção de 30 dias).</summary>
+        public Task<PagedResult<WebhookDeliveryRecord>> ListDeliveriesAsync(
+            Guid id, int? page = null, int? pageSize = null, CancellationToken cancellationToken = default) =>
+            client.SendAsync<PagedResult<WebhookDeliveryRecord>>(HttpMethod.Get,
+                WithQuery($"/api/v1/webhooks/{id}/deliveries", ("page", page?.ToString()), ("pageSize", pageSize?.ToString())),
+                null, cancellationToken);
+
+        /// <summary>Reenvia a entrega (mesmo payload, byte a byte) — qualquer estado, inclusive sucesso.</summary>
+        public Task<WebhookDeliveryRecord> ReplayAsync(Guid id, Guid deliveryId, CancellationToken cancellationToken = default) =>
+            client.SendAsync<WebhookDeliveryRecord>(HttpMethod.Post,
+                $"/api/v1/webhooks/{id}/deliveries/{deliveryId}/replay", null, cancellationToken);
     }
 
     public sealed class UsersResource(GeneraIdClient client)

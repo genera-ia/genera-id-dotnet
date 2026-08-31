@@ -8,7 +8,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <PackageId>GeneraId.Sdk</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>Genera</Authors>
     <Description>SDK oficial do Genera ID para .NET — Management API e verificação de webhooks.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

@@ -140,6 +140,36 @@ public class GeneraIdClientTests
     }
 
     [Fact]
+    public async Task Monta_as_rotas_de_historico_e_replay_de_webhooks()
+    {
+        var webhookId = Guid.NewGuid();
+        var handler = new FakeHttpHandler().Enqueue(HttpStatusCode.OK,
+            """{"items":[],"page":3,"pageSize":20,"totalCount":0}""");
+        using var client = CreateClient(handler);
+
+        await client.Webhooks.ListDeliveriesAsync(webhookId, page: 3);
+
+        var (request, _) = Assert.Single(handler.Calls);
+        Assert.Equal($"/api/v1/webhooks/{webhookId}/deliveries?page=3", request.RequestUri!.PathAndQuery);
+
+        var deliveryId = Guid.NewGuid();
+        var replayHandler = new FakeHttpHandler().Enqueue(HttpStatusCode.Accepted, $$"""
+            {"id":"{{deliveryId}}","eventType":"user.created","status":"pending","attempts":1,
+             "lastStatusCode":null,"lastError":null,"createdAt":"2026-08-30T00:00:00+00:00",
+             "deliveredAt":null,"nextAttemptAt":"2026-08-30T00:00:01+00:00","payloadJson":"{}"}
+            """);
+        using var replayClient = CreateClient(replayHandler);
+
+        var replayed = await replayClient.Webhooks.ReplayAsync(webhookId, deliveryId);
+
+        var (replayRequest, _) = Assert.Single(replayHandler.Calls);
+        Assert.Equal(HttpMethod.Post, replayRequest.Method);
+        Assert.Equal($"/api/v1/webhooks/{webhookId}/deliveries/{deliveryId}/replay",
+            replayRequest.RequestUri!.PathAndQuery);
+        Assert.Equal("pending", replayed.Status);
+    }
+
+    [Fact]
     public async Task Desserializa_o_envelope_de_criacao_de_tenant()
     {
         var handler = new FakeHttpHandler().Enqueue(HttpStatusCode.Created, """
