@@ -80,4 +80,4 @@ A comparação é de tempo constante e timestamps além da tolerância (padrão 
 dotnet test GeneraIdSdk.slnx
 ```
 
-Licença: MIT.
+[Changelog](CHANGELOG.md) · Licença: MIT.
