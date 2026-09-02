@@ -38,9 +38,16 @@ var usuarios = await generaId.Users.ListAsync(query: "ana@acme");
 await generaId.Tenant.RotateKeysAsync();
 // Emergência (chave comprometida): aposenta as antigas na hora
 await generaId.Tenant.RotateKeysAsync(revokeOldKeysNow: true);
+
+// Organizações: workspaces dentro do tenant, com membros e convites
+var org = await generaId.Organizations.CreateAsync(new CreateOrganizationRequest("Acme Corp"));
+await generaId.Organizations.Memberships.AddAsync(org.Id, new CreateMembershipRequest(userId, "owner"));
+var invitation = await generaId.Organizations.Invitations.CreateAsync(
+    org.Id, new CreateInvitationRequest("ana@acme.com", "member"));
+// invitation.Link aparece só na criação — use se não quiser depender só do e-mail
 ```
 
-Em apps ASP.NET, injete um `HttpClient` do `IHttpClientFactory` no segundo parâmetro do construtor. Recursos: `Tenant` (Get/Update/RotateKeys), `Tenants` (chave de plataforma), `ApiKeys`, `Applications`, `Webhooks`, `Users`, `Audits`. Erros viram `GeneraIdException` com `StatusCode` e `Body`; `429`/`5xx` têm retry automático com backoff (configure com `MaxRetries`).
+Em apps ASP.NET, injete um `HttpClient` do `IHttpClientFactory` no segundo parâmetro do construtor. Recursos: `Tenant` (Get/Update/RotateKeys), `Tenants` (chave de plataforma), `ApiKeys`, `Applications`, `Webhooks`, `Organizations` (com `.Memberships` e `.Invitations`), `Users` (com `.ListOrganizationsAsync`), `Audits`. Erros viram `GeneraIdException` com `StatusCode` e `Body`; `429`/`5xx` têm retry automático com backoff (configure com `MaxRetries`).
 
 ## Webhooks
 

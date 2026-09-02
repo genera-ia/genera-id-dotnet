@@ -209,4 +209,111 @@ public class GeneraIdClientTests
         using var routineJson = JsonDocument.Parse(routineBody!);
         Assert.False(routineJson.RootElement.GetProperty("revokeOldKeysNow").GetBoolean());
     }
+
+    [Fact]
+    public async Task Cria_organizacao()
+    {
+        var handler = new FakeHttpHandler().Enqueue(HttpStatusCode.Created, """
+            {"id":"0f8fad5b-d9cb-469f-a165-70867728950e","name":"Acme Corp","slug":"acme-corp",
+             "metadataJson":null,"createdByUserId":null,"createdAt":"2026-09-01T00:00:00+00:00"}
+            """);
+        using var client = CreateClient(handler);
+
+        var organization = await client.Organizations.CreateAsync(new CreateOrganizationRequest("Acme Corp"));
+
+        var (request, body) = Assert.Single(handler.Calls);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal("https://id.example.com/api/v1/organizations", request.RequestUri!.ToString());
+        using var json = JsonDocument.Parse(body!);
+        Assert.Equal("Acme Corp", json.RootElement.GetProperty("name").GetString());
+        Assert.Equal("acme-corp", organization.Slug);
+    }
+
+    [Fact]
+    public async Task Monta_as_rotas_de_memberships_e_rejeita_remover_o_ultimo_owner()
+    {
+        var organizationId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        var listHandler = new FakeHttpHandler().Enqueue(HttpStatusCode.OK,
+            """{"items":[],"page":2,"pageSize":50,"totalCount":0}""");
+        using var listClient = CreateClient(listHandler);
+        await listClient.Organizations.Memberships.ListAsync(organizationId, page: 2);
+        var (listRequest, _) = Assert.Single(listHandler.Calls);
+        Assert.Equal($"/api/v1/organizations/{organizationId}/memberships?page=2", listRequest.RequestUri!.PathAndQuery);
+
+        var addHandler = new FakeHttpHandler().Enqueue(HttpStatusCode.Created, $$"""
+            {"id":"{{Guid.NewGuid()}}","organizationId":"{{organizationId}}","userId":"{{userId}}",
+             "userEmail":null,"userDisplayName":null,"role":"owner","createdAt":"2026-09-01T00:00:00+00:00"}
+            """);
+        using var addClient = CreateClient(addHandler);
+        var membership = await addClient.Organizations.Memberships.AddAsync(
+            organizationId, new CreateMembershipRequest(userId, "owner"));
+        Assert.Equal("owner", membership.Role);
+
+        var updateHandler = new FakeHttpHandler().Enqueue(HttpStatusCode.OK, $$"""
+            {"id":"{{Guid.NewGuid()}}","organizationId":"{{organizationId}}","userId":"{{userId}}",
+             "userEmail":null,"userDisplayName":null,"role":"admin","createdAt":"2026-09-01T00:00:00+00:00"}
+            """);
+        using var updateClient = CreateClient(updateHandler);
+        await updateClient.Organizations.Memberships.UpdateRoleAsync(
+            organizationId, userId, new UpdateMembershipRequest("admin"));
+        var (updateRequest, _) = Assert.Single(updateHandler.Calls);
+        Assert.Equal(HttpMethod.Patch, updateRequest.Method);
+        Assert.Equal($"/api/v1/organizations/{organizationId}/memberships/{userId}", updateRequest.RequestUri!.PathAndQuery);
+
+        // A API rejeita remover o único "owner" com 409.
+        var conflictHandler = new FakeHttpHandler().Enqueue(HttpStatusCode.Conflict,
+            """{"title":"A organização precisa de pelo menos um membro com papel 'owner'."}""");
+        using var conflictClient = CreateClient(conflictHandler);
+        var exception = await Assert.ThrowsAsync<GeneraIdException>(() =>
+            conflictClient.Organizations.Memberships.RemoveAsync(organizationId, userId));
+        Assert.Equal(409, exception.StatusCode);
+    }
+
+    [Fact]
+    public async Task Cria_convite_com_link_uma_unica_vez_e_revoga()
+    {
+        var organizationId = Guid.NewGuid();
+        var invitationId = Guid.NewGuid();
+
+        var createHandler = new FakeHttpHandler().Enqueue(HttpStatusCode.Created, $$"""
+            {"id":"{{invitationId}}","organizationId":"{{organizationId}}","email":"ana@acme.com","role":"member",
+             "status":"pending","expiresAt":"2026-09-08T00:00:00+00:00","createdAt":"2026-09-01T00:00:00+00:00",
+             "acceptedAt":null,"link":"https://acme.accounts.genera.ia.br/organizations/invitations/accept?token=abc"}
+            """);
+        using var createClient = CreateClient(createHandler);
+        var invitation = await createClient.Organizations.Invitations.CreateAsync(
+            organizationId, new CreateInvitationRequest("ana@acme.com", "member"));
+        Assert.Contains("token=abc", invitation.Link);
+
+        var revokeHandler = new FakeHttpHandler().Enqueue(HttpStatusCode.OK, $$"""
+            {"id":"{{invitationId}}","organizationId":"{{organizationId}}","email":"ana@acme.com","role":"member",
+             "status":"revoked","expiresAt":"2026-09-08T00:00:00+00:00","createdAt":"2026-09-01T00:00:00+00:00",
+             "acceptedAt":null}
+            """);
+        using var revokeClient = CreateClient(revokeHandler);
+        var revoked = await revokeClient.Organizations.Invitations.RevokeAsync(organizationId, invitationId);
+        var (revokeRequest, _) = Assert.Single(revokeHandler.Calls);
+        Assert.Equal(HttpMethod.Post, revokeRequest.Method);
+        Assert.Equal($"/api/v1/organizations/{organizationId}/invitations/{invitationId}/revoke",
+            revokeRequest.RequestUri!.PathAndQuery);
+        Assert.Equal("revoked", revoked.Status);
+    }
+
+    [Fact]
+    public async Task Lista_organizacoes_do_usuario()
+    {
+        var userId = Guid.NewGuid();
+        var handler = new FakeHttpHandler().Enqueue(HttpStatusCode.OK, $$"""
+            [{"organizationId":"{{Guid.NewGuid()}}","organizationName":"Acme Corp","organizationSlug":"acme-corp",
+              "role":"owner","createdAt":"2026-09-01T00:00:00+00:00"}]
+            """);
+        using var client = CreateClient(handler);
+
+        var organizations = await client.Users.ListOrganizationsAsync(userId);
+
+        Assert.Equal($"/api/v1/users/{userId}/organizations", handler.Calls[0].Request.RequestUri!.PathAndQuery);
+        Assert.Equal("owner", Assert.Single(organizations).Role);
+    }
 }

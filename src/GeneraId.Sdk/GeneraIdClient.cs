@@ -59,6 +59,7 @@ public sealed class GeneraIdClient : IDisposable
         ApiKeys = new ApiKeysResource(this);
         Applications = new ApplicationsResource(this);
         Webhooks = new WebhooksResource(this);
+        Organizations = new OrganizationsResource(this);
         Users = new UsersResource(this);
         Audits = new AuditsResource(this);
     }
@@ -74,6 +75,9 @@ public sealed class GeneraIdClient : IDisposable
     public ApplicationsResource Applications { get; }
 
     public WebhooksResource Webhooks { get; }
+
+    /// <summary>Organizações (workspaces) do tenant — criação, membros e convites.</summary>
+    public OrganizationsResource Organizations { get; }
 
     public UsersResource Users { get; }
 
@@ -189,6 +193,88 @@ public sealed class GeneraIdClient : IDisposable
 
         public Task<User> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
             client.SendAsync<User>(HttpMethod.Get, $"/api/v1/users/{id}", null, cancellationToken);
+
+        /// <summary>Organizações do usuário no tenant, com o papel em cada uma.</summary>
+        public Task<IReadOnlyList<UserOrganization>> ListOrganizationsAsync(Guid id, CancellationToken cancellationToken = default) =>
+            client.SendAsync<IReadOnlyList<UserOrganization>>(HttpMethod.Get, $"/api/v1/users/{id}/organizations", null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Organizações (workspaces) do tenant. Criação fica só aqui (Management API)
+    /// — sem self-service no Genera ID; papéis de membership são strings opacas.
+    /// </summary>
+    public sealed class OrganizationsResource(GeneraIdClient client)
+    {
+        public Task<PagedResult<Organization>> ListAsync(
+            string? query = null, int? page = null, int? pageSize = null, CancellationToken cancellationToken = default) =>
+            client.SendAsync<PagedResult<Organization>>(HttpMethod.Get,
+                WithQuery("/api/v1/organizations", ("query", query), ("page", page?.ToString()), ("pageSize", pageSize?.ToString())),
+                null, cancellationToken);
+
+        public Task<Organization> CreateAsync(CreateOrganizationRequest request, CancellationToken cancellationToken = default) =>
+            client.SendAsync<Organization>(HttpMethod.Post, "/api/v1/organizations", request, cancellationToken);
+
+        public Task<Organization> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
+            client.SendAsync<Organization>(HttpMethod.Get, $"/api/v1/organizations/{id}", null, cancellationToken);
+
+        /// <summary>Slug não muda — recrie a organização se precisar de outro.</summary>
+        public Task<Organization> UpdateAsync(Guid id, UpdateOrganizationRequest request, CancellationToken cancellationToken = default) =>
+            client.SendAsync<Organization>(HttpMethod.Patch, $"/api/v1/organizations/{id}", request, cancellationToken);
+
+        /// <summary>Remove em cascata memberships e convites.</summary>
+        public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+            client.SendAsync<object?>(HttpMethod.Delete, $"/api/v1/organizations/{id}", null, cancellationToken);
+
+        public MembershipsResource Memberships { get; } = new(client);
+
+        public InvitationsResource Invitations { get; } = new(client);
+    }
+
+    public sealed class MembershipsResource(GeneraIdClient client)
+    {
+        public Task<PagedResult<Membership>> ListAsync(
+            Guid organizationId, int? page = null, int? pageSize = null, CancellationToken cancellationToken = default) =>
+            client.SendAsync<PagedResult<Membership>>(HttpMethod.Get,
+                WithQuery($"/api/v1/organizations/{organizationId}/memberships",
+                    ("page", page?.ToString()), ("pageSize", pageSize?.ToString())),
+                null, cancellationToken);
+
+        /// <summary>Adiciona um usuário já existente direto — sem convite.</summary>
+        public Task<Membership> AddAsync(Guid organizationId, CreateMembershipRequest request, CancellationToken cancellationToken = default) =>
+            client.SendAsync<Membership>(HttpMethod.Post, $"/api/v1/organizations/{organizationId}/memberships", request, cancellationToken);
+
+        /// <summary>Rebaixar o único membro "owner" é rejeitado (409) — a organização nunca fica sem nenhum.</summary>
+        public Task<Membership> UpdateRoleAsync(
+            Guid organizationId, Guid userId, UpdateMembershipRequest request, CancellationToken cancellationToken = default) =>
+            client.SendAsync<Membership>(HttpMethod.Patch, $"/api/v1/organizations/{organizationId}/memberships/{userId}", request, cancellationToken);
+
+        /// <summary>Remover o único membro "owner" é rejeitado (409).</summary>
+        public Task RemoveAsync(Guid organizationId, Guid userId, CancellationToken cancellationToken = default) =>
+            client.SendAsync<object?>(HttpMethod.Delete, $"/api/v1/organizations/{organizationId}/memberships/{userId}", null, cancellationToken);
+    }
+
+    public sealed class InvitationsResource(GeneraIdClient client)
+    {
+        public Task<PagedResult<Invitation>> ListAsync(
+            Guid organizationId, string? status = null, int? page = null, int? pageSize = null,
+            CancellationToken cancellationToken = default) =>
+            client.SendAsync<PagedResult<Invitation>>(HttpMethod.Get,
+                WithQuery($"/api/v1/organizations/{organizationId}/invitations",
+                    ("status", status), ("page", page?.ToString()), ("pageSize", pageSize?.ToString())),
+                null, cancellationToken);
+
+        /// <summary>
+        /// Cria o convite e dispara o e-mail; <see cref="Invitation.Link"/> no
+        /// retorno aparece só aqui (como o secret de webhook) — use se não
+        /// quiser depender só do e-mail.
+        /// </summary>
+        public Task<Invitation> CreateAsync(Guid organizationId, CreateInvitationRequest request, CancellationToken cancellationToken = default) =>
+            client.SendAsync<Invitation>(HttpMethod.Post, $"/api/v1/organizations/{organizationId}/invitations", request, cancellationToken);
+
+        /// <summary>Só convites pendentes podem ser revogados (409 caso contrário).</summary>
+        public Task<Invitation> RevokeAsync(Guid organizationId, Guid invitationId, CancellationToken cancellationToken = default) =>
+            client.SendAsync<Invitation>(HttpMethod.Post,
+                $"/api/v1/organizations/{organizationId}/invitations/{invitationId}/revoke", null, cancellationToken);
     }
 
     public sealed class AuditsResource(GeneraIdClient client)

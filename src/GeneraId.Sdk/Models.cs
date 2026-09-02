@@ -113,4 +113,56 @@ public sealed record LoginAudit(
     string? UserAgent,
     DateTimeOffset CreatedAt);
 
+/// <summary>
+/// Organização (workspace) dentro do tenant. Papéis de membership são strings
+/// opacas — o Genera ID só garante que nunca fica sem nenhum "owner".
+/// </summary>
+public sealed record Organization(
+    Guid Id,
+    string Name,
+    string Slug,
+    string? MetadataJson,
+    Guid? CreatedByUserId,
+    DateTimeOffset CreatedAt);
+
+/// <summary>Se <see cref="Slug"/> for omitido, é derivado do nome. Único por tenant, imutável após criado.</summary>
+public sealed record CreateOrganizationRequest(string Name, string? Slug = null, string? MetadataJson = null);
+
+public sealed record UpdateOrganizationRequest(string? Name = null, string? MetadataJson = null);
+
+public sealed record Membership(
+    Guid Id,
+    Guid OrganizationId,
+    Guid UserId,
+    string? UserEmail,
+    string? UserDisplayName,
+    string Role,
+    DateTimeOffset CreatedAt);
+
+public sealed record CreateMembershipRequest(Guid UserId, string Role);
+
+public sealed record UpdateMembershipRequest(string Role);
+
+/// <summary>Organizações de um usuário, com o papel em cada uma — ver <c>Users.ListOrganizationsAsync</c>.</summary>
+public sealed record UserOrganization(
+    Guid OrganizationId, string OrganizationName, string OrganizationSlug, string Role, DateTimeOffset CreatedAt);
+
+/// <summary>
+/// `Status`: "pending" | "accepted" | "revoked" | "expired". TTL de 7 dias a
+/// partir da criação. <see cref="Link"/> (o link de aceite) aparece só na
+/// resposta da criação, uma única vez.
+/// </summary>
+public sealed record Invitation(
+    Guid Id,
+    Guid OrganizationId,
+    string Email,
+    string Role,
+    string Status,
+    DateTimeOffset ExpiresAt,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? AcceptedAt,
+    string? Link = null);
+
+public sealed record CreateInvitationRequest(string Email, string Role);
+
 public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount);
