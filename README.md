@@ -47,7 +47,7 @@ var invitation = await generaId.Organizations.Invitations.CreateAsync(
 // invitation.Link aparece só na criação — use se não quiser depender só do e-mail
 ```
 
-Em apps ASP.NET, injete um `HttpClient` do `IHttpClientFactory` no segundo parâmetro do construtor. Recursos: `Tenant` (Get/Update/RotateKeys), `Tenants` (chave de plataforma), `ApiKeys`, `Applications`, `Webhooks`, `Organizations` (com `.Memberships` e `.Invitations`), `Users` (com `.ListOrganizationsAsync`), `Audits`. Erros viram `GeneraIdException` com `StatusCode` e `Body`; `429`/`5xx` têm retry automático com backoff (configure com `MaxRetries`).
+Em apps ASP.NET, injete um `HttpClient` do `IHttpClientFactory` no segundo parâmetro do construtor. Recursos: `Tenant` (Get/Update/RotateKeys), `Tenants` (chave de plataforma), `ApiKeys`, `Applications`, `Webhooks`, `Organizations` (com `.Memberships` e `.Invitations`), `Users` (com `.ListOrganizationsAsync` e `.ResetMfaAsync`), `Audits`. Erros viram `GeneraIdException` com `StatusCode` e `Body`; `429`/`5xx` têm retry automático com backoff (configure com `MaxRetries`).
 
 ## Webhooks
 

@@ -51,21 +51,31 @@ public sealed record Application(
     string? ConsentType,
     IReadOnlyList<string> RedirectUris,
     IReadOnlyList<string> PostLogoutRedirectUris,
-    string? ClientSecret = null);
+    string? ClientSecret = null,
+    string? BackChannelLogoutUri = null,
+    bool RequireMfa = false);
 
+/// <param name="BackChannelLogoutUri">Endpoint que recebe o logout_token (Back-Channel Logout 1.0).</param>
+/// <param name="RequireMfa">true = todo login neste client exige segundo fator.</param>
 public sealed record CreateApplicationRequest(
     string ClientId,
     string DisplayName,
     IReadOnlyList<string> RedirectUris,
     string ClientType = "public",
     string ConsentType = "implicit",
-    IReadOnlyList<string>? PostLogoutRedirectUris = null);
+    IReadOnlyList<string>? PostLogoutRedirectUris = null,
+    string? BackChannelLogoutUri = null,
+    bool RequireMfa = false);
 
+/// <param name="BackChannelLogoutUri">Nulo/vazio remove o endpoint.</param>
+/// <param name="RequireMfa">Nulo = não altera.</param>
 public sealed record UpdateApplicationRequest(
     string DisplayName,
     IReadOnlyList<string> RedirectUris,
     string? ConsentType = null,
-    IReadOnlyList<string>? PostLogoutRedirectUris = null);
+    IReadOnlyList<string>? PostLogoutRedirectUris = null,
+    string? BackChannelLogoutUri = null,
+    bool? RequireMfa = null);
 
 public sealed record WebhookEndpoint(
     Guid Id,
@@ -74,7 +84,10 @@ public sealed record WebhookEndpoint(
     DateTimeOffset CreatedAt,
     string? Secret = null);
 
-/// <summary>`Events` vazio/nulo = todos (user.created, user.updated, session.created).</summary>
+/// <summary>
+/// `Events` vazio/nulo = todos. Ex.: user.created, user.updated, session.created,
+/// user.mfaEnabled, user.mfaDisabled, user.mfaReset, organization.*.
+/// </summary>
 public sealed record CreateWebhookRequest(string Url, IReadOnlyList<string>? Events = null);
 
 /// <summary>

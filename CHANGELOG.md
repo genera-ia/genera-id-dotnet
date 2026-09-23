@@ -2,6 +2,17 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/); versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.4.0] — 2026-09-23
+
+### Adicionado
+
+- `Users.ResetMfaAsync(id)`: reset de MFA de quem perdeu o autenticador. Desliga o MFA, encerra as sessões no IdP e avisa os apps (back-channel logout) e o usuário (e-mail). Idempotente.
+- `Application.RequireMfa` e `RequireMfa` em `CreateApplicationRequest`/`UpdateApplicationRequest`: todo login no client exige segundo fator (no update, `null` não altera).
+- `Application.BackChannelLogoutUri` e `BackChannelLogoutUri` nos requests de application (Back-Channel Logout 1.0, já suportado pela API desde 19/09).
+- Novos eventos de webhook documentados: `user.mfaEnabled`, `user.mfaDisabled`, `user.mfaReset`. O payload de usuário agora traz `twoFactorEnabled`.
+
+Parâmetros novos entram no fim dos records, com valor padrão: o código existente continua compilando.
+
 ## [0.3.0] — 2026-09-02
 
 ### Adicionado
@@ -23,6 +34,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/); 
 - Release inicial: cliente tipado da Management API (`Tenant`, `Tenants`, `ApiKeys`, `Applications`, `Webhooks`, `Users`, `Audits`), com retry automático em `429`/`5xx` (backoff configurável via `MaxRetries`) e erros tipados (`GeneraIdException`).
 - `WebhookSignature.Verify` — verificação de assinatura de webhooks (HMAC-SHA256, comparação de tempo constante, tolerância de timestamp configurável).
 
+[0.4.0]: https://github.com/genera-ia/genera-id-dotnet/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/genera-ia/genera-id-dotnet/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/genera-ia/genera-id-dotnet/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/genera-ia/genera-id-dotnet/releases/tag/v0.1.0

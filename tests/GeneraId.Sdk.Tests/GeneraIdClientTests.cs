@@ -316,4 +316,39 @@ public class GeneraIdClientTests
         Assert.Equal($"/api/v1/users/{userId}/organizations", handler.Calls[0].Request.RequestUri!.PathAndQuery);
         Assert.Equal("owner", Assert.Single(organizations).Role);
     }
+
+    [Fact]
+    public async Task ResetMfa_faz_delete_em_users_id_mfa()
+    {
+        var userId = Guid.NewGuid();
+        var handler = new FakeHttpHandler().Enqueue(HttpStatusCode.NoContent);
+        using var client = CreateClient(handler);
+
+        await client.Users.ResetMfaAsync(userId);
+
+        var (request, _) = Assert.Single(handler.Calls);
+        Assert.Equal(HttpMethod.Delete, request.Method);
+        Assert.Equal($"/api/v1/users/{userId}/mfa", request.RequestUri!.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task Cria_application_com_requireMfa_e_backChannelLogoutUri()
+    {
+        var handler = new FakeHttpHandler().Enqueue(HttpStatusCode.Created, """
+            {"clientId":"painel","displayName":"Painel","clientType":"public","consentType":"implicit",
+             "redirectUris":["https://acme.com/cb"],"postLogoutRedirectUris":[],
+             "backChannelLogoutUri":"https://acme.com/bcl","requireMfa":true}
+            """);
+        using var client = CreateClient(handler);
+
+        var application = await client.Applications.CreateAsync(new CreateApplicationRequest(
+            "painel", "Painel", ["https://acme.com/cb"],
+            BackChannelLogoutUri: "https://acme.com/bcl", RequireMfa: true));
+
+        var body = handler.Calls[0].Body!;
+        Assert.Contains("\"requireMfa\":true", body);
+        Assert.Contains("\"backChannelLogoutUri\":\"https://acme.com/bcl\"", body);
+        Assert.True(application.RequireMfa);
+        Assert.Equal("https://acme.com/bcl", application.BackChannelLogoutUri);
+    }
 }
