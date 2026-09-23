@@ -197,6 +197,13 @@ public sealed class GeneraIdClient : IDisposable
         /// <summary>Organizações do usuário no tenant, com o papel em cada uma.</summary>
         public Task<IReadOnlyList<UserOrganization>> ListOrganizationsAsync(Guid id, CancellationToken cancellationToken = default) =>
             client.SendAsync<IReadOnlyList<UserOrganization>>(HttpMethod.Get, $"/api/v1/users/{id}/organizations", null, cancellationToken);
+
+        /// <summary>
+        /// Reset de MFA (usuário perdeu o autenticador): desliga o MFA, encerra as
+        /// sessões no IdP e avisa os apps e o usuário. Idempotente.
+        /// </summary>
+        public Task ResetMfaAsync(Guid id, CancellationToken cancellationToken = default) =>
+            client.SendAsync<object?>(HttpMethod.Delete, $"/api/v1/users/{id}/mfa", null, cancellationToken);
     }
 
     /// <summary>
