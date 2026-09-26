@@ -60,6 +60,7 @@ public sealed class GeneraIdClient : IDisposable
         Applications = new ApplicationsResource(this);
         Webhooks = new WebhooksResource(this);
         Organizations = new OrganizationsResource(this);
+        SamlConnections = new SamlConnectionsResource(this);
         Users = new UsersResource(this);
         Audits = new AuditsResource(this);
     }
@@ -78,6 +79,12 @@ public sealed class GeneraIdClient : IDisposable
 
     /// <summary>Organizações (workspaces) do tenant — criação, membros e convites.</summary>
     public OrganizationsResource Organizations { get; }
+
+    /// <summary>
+    /// SSO corporativo (SAML): usuários das empresas-clientes entram pelo IdP delas
+    /// (Entra ID, Okta, Google Workspace…). Exige o recurso liberado no tenant (403 sem ele).
+    /// </summary>
+    public SamlConnectionsResource SamlConnections { get; }
 
     public UsersResource Users { get; }
 
@@ -121,6 +128,11 @@ public sealed class GeneraIdClient : IDisposable
 
         public Task<IReadOnlyList<Tenant>> ListAsync(CancellationToken cancellationToken = default) =>
             client.SendAsync<IReadOnlyList<Tenant>>(HttpMethod.Get, "/api/v1/tenants", null, cancellationToken);
+
+        /// <summary>Ajustes que só a plataforma faz — ex.: <c>SsoEnabled: true</c> libera o SSO corporativo.</summary>
+        public Task<Tenant> UpdateAsync(
+            Guid id, UpdateTenantPlatformRequest request, CancellationToken cancellationToken = default) =>
+            client.SendAsync<Tenant>(HttpMethod.Patch, $"/api/v1/tenants/{id}", request, cancellationToken);
     }
 
     public sealed class ApiKeysResource(GeneraIdClient client)
@@ -282,6 +294,34 @@ public sealed class GeneraIdClient : IDisposable
         public Task<Invitation> RevokeAsync(Guid organizationId, Guid invitationId, CancellationToken cancellationToken = default) =>
             client.SendAsync<Invitation>(HttpMethod.Post,
                 $"/api/v1/organizations/{organizationId}/invitations/{invitationId}/revoke", null, cancellationToken);
+    }
+
+    public sealed class SamlConnectionsResource(GeneraIdClient client)
+    {
+        public Task<IReadOnlyList<SamlConnection>> ListAsync(CancellationToken cancellationToken = default) =>
+            client.SendAsync<IReadOnlyList<SamlConnection>>(HttpMethod.Get, "/api/v1/saml-connections", null, cancellationToken);
+
+        /// <summary>Cadastre no IdP o <see cref="SamlConnection.ServiceProvider"/> da resposta.</summary>
+        public Task<SamlConnection> CreateAsync(
+            CreateSamlConnectionRequest request, CancellationToken cancellationToken = default) =>
+            client.SendAsync<SamlConnection>(HttpMethod.Post, "/api/v1/saml-connections", request, cancellationToken);
+
+        public Task<SamlConnection> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
+            client.SendAsync<SamlConnection>(HttpMethod.Get, $"/api/v1/saml-connections/{id}", null, cancellationToken);
+
+        public Task<SamlConnection> UpdateAsync(
+            Guid id, UpdateSamlConnectionRequest request, CancellationToken cancellationToken = default) =>
+            client.SendAsync<SamlConnection>(HttpMethod.Patch, $"/api/v1/saml-connections/{id}", request, cancellationToken);
+
+        /// <summary>Substitui a lista de domínios (um domínio pertence a no máximo uma conexão do tenant).</summary>
+        public Task<SamlConnection> ReplaceDomainsAsync(
+            Guid id, IReadOnlyList<SamlDomain> domains, CancellationToken cancellationToken = default) =>
+            client.SendAsync<SamlConnection>(HttpMethod.Put, $"/api/v1/saml-connections/{id}/domains",
+                new { domains }, cancellationToken);
+
+        /// <summary>Remove a conexão e os vínculos de login com o IdP; os usuários continuam existindo.</summary>
+        public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+            client.SendAsync<object?>(HttpMethod.Delete, $"/api/v1/saml-connections/{id}", null, cancellationToken);
     }
 
     public sealed class AuditsResource(GeneraIdClient client)

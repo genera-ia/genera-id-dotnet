@@ -9,7 +9,8 @@ public sealed record Tenant(
     DateTimeOffset CreatedAt,
     string? BrandingJson,
     string? SettingsJson,
-    string? CustomDomain);
+    string? CustomDomain,
+    bool SsoEnabled = false);
 
 public sealed record CreateTenantRequest(
     string Slug,
@@ -26,6 +27,10 @@ public sealed record UpdateTenantRequest(
     string? BrandingJson = null,
     string? SettingsJson = null,
     string? CustomDomain = null);
+
+/// <summary>Ajustes que só a plataforma faz (chave de plataforma). Campos nulos não alteram.</summary>
+/// <param name="SsoEnabled">Libera/bloqueia o SSO corporativo (SAML) — recurso comercial.</param>
+public sealed record UpdateTenantPlatformRequest(bool? SsoEnabled = null);
 
 /// <summary><c>RevokeOldKeysNow = true</c> (emergência) aposenta as chaves antigas na hora.</summary>
 public sealed record RotateKeysRequest(bool RevokeOldKeysNow);
@@ -177,5 +182,82 @@ public sealed record Invitation(
     string? Link = null);
 
 public sealed record CreateInvitationRequest(string Email, string Role);
+
+/// <summary>Domínio de e-mail atendido por uma conexão SAML (único por tenant).</summary>
+/// <param name="EnforceSso">true = domínio só entra por SSO: sem login, recuperação, cadastro ou troca de senha.</param>
+public sealed record SamlDomain(string Domain, bool EnforceSso = false);
+
+/// <param name="RetireAt">Preenchido quando o certificado saiu da metadata do IdP: continua aceito até esta data.</param>
+public sealed record SamlCertificate(string Thumbprint, string Subject, DateTimeOffset NotAfter, DateTimeOffset? RetireAt);
+
+/// <summary>O que se cadastra no IdP da empresa (Entra: Identifier/Reply URL; Okta: Audience URI/SSO URL).</summary>
+public sealed record SamlServiceProvider(string EntityId, IReadOnlyList<string> AcsUrls, string MetadataUrl);
+
+/// <summary>Conexão de SSO corporativo: o Genera ID como SP SAML diante do IdP de uma empresa.</summary>
+public sealed record SamlConnection(
+    Guid Id,
+    string Name,
+    bool Enabled,
+    string IdpEntityId,
+    string IdpSsoUrl,
+    string? IdpMetadataUrl,
+    DateTimeOffset? MetadataRefreshedAt,
+    string? MetadataRefreshError,
+    IReadOnlyList<SamlCertificate> IdpCertificates,
+    IReadOnlyDictionary<string, string>? AttributeMapping,
+    string? StableIdAttribute,
+    bool JitProvisioning,
+    bool TrustIdpMfa,
+    Guid? OrganizationId,
+    string DefaultRole,
+    IReadOnlyList<SamlDomain> Domains,
+    SamlServiceProvider ServiceProvider,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
+/// <summary>
+/// Dados do IdP: <paramref name="IdpMetadataUrl"/> (HTTPS pública, atualizada todo dia),
+/// <paramref name="IdpMetadataXml"/> ou os três campos manuais.
+/// </summary>
+/// <param name="AttributeMapping">Chaves: email, givenName, familyName, displayName → nome do atributo SAML.</param>
+/// <param name="StableIdAttribute">Atributo usado como chave estável no lugar do NameID (ex.: objectidentifier no Entra).</param>
+/// <param name="JitProvisioning">Cria a conta no primeiro login (padrão true no servidor); só para e-mails dos domínios.</param>
+/// <param name="TrustIdpMfa">Aceita o MFA declarado pelo IdP como segundo fator.</param>
+/// <param name="OrganizationId">Quem entra pela conexão vira membro desta organização.</param>
+/// <param name="DefaultRole">Papel da membership automática (padrão "member" no servidor).</param>
+public sealed record CreateSamlConnectionRequest(
+    string Name,
+    IReadOnlyList<SamlDomain> Domains,
+    string? IdpMetadataUrl = null,
+    string? IdpMetadataXml = null,
+    string? IdpEntityId = null,
+    string? IdpSsoUrl = null,
+    IReadOnlyList<string>? IdpCertificates = null,
+    IReadOnlyDictionary<string, string>? AttributeMapping = null,
+    string? StableIdAttribute = null,
+    bool? JitProvisioning = null,
+    bool? Enabled = null,
+    bool? TrustIdpMfa = null,
+    Guid? OrganizationId = null,
+    string? DefaultRole = null);
+
+/// <summary>
+/// Campos nulos não são enviados (não alteram). String vazia remove <see cref="IdpMetadataUrl"/>,
+/// <see cref="StableIdAttribute"/> e <see cref="OrganizationId"/> (id da organização como string).
+/// </summary>
+public sealed record UpdateSamlConnectionRequest(
+    string? Name = null,
+    string? IdpMetadataUrl = null,
+    string? IdpMetadataXml = null,
+    string? IdpEntityId = null,
+    string? IdpSsoUrl = null,
+    IReadOnlyList<string>? IdpCertificates = null,
+    IReadOnlyDictionary<string, string>? AttributeMapping = null,
+    string? StableIdAttribute = null,
+    bool? JitProvisioning = null,
+    bool? Enabled = null,
+    bool? TrustIdpMfa = null,
+    string? OrganizationId = null,
+    string? DefaultRole = null);
 
 public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount);
