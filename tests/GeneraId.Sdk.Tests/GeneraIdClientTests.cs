@@ -351,4 +351,91 @@ public class GeneraIdClientTests
         Assert.True(application.RequireMfa);
         Assert.Equal("https://acme.com/bcl", application.BackChannelLogoutUri);
     }
+
+    private const string SamlConnectionJson = """
+        {"id":"7c9e6679-7425-40de-944b-e07fc1f90ae7","name":"Acme","enabled":true,"idpConfigured":true,
+         "idpEntityId":"https://sts.windows.net/abc/","idpSsoUrl":"https://login.microsoftonline.com/abc/saml2",
+         "idpMetadataUrl":null,"metadataRefreshedAt":null,"metadataRefreshError":null,
+         "idpCertificates":[{"thumbprint":"AB","subject":"CN=idp","notAfter":"2030-01-01T00:00:00+00:00","retireAt":null}],
+         "attributeMapping":{"email":"mail"},"stableIdAttribute":null,"jitProvisioning":true,"trustIdpMfa":false,
+         "organizationId":null,"defaultRole":"member","domains":[{"domain":"acme.com.br","enforceSso":true}],
+         "serviceProvider":{"entityId":"https://acme.accounts.genera.ia.br/saml/7c9e6679-7425-40de-944b-e07fc1f90ae7",
+           "acsUrls":["https://acme.accounts.genera.ia.br/saml/7c9e6679-7425-40de-944b-e07fc1f90ae7/acs"],
+           "metadataUrl":"https://acme.accounts.genera.ia.br/saml/7c9e6679-7425-40de-944b-e07fc1f90ae7/metadata"},
+         "createdAt":"2026-09-26T00:00:00+00:00","updatedAt":"2026-09-26T00:00:00+00:00"}
+        """;
+
+    [Fact]
+    public async Task Cria_conexao_SAML_e_le_o_service_provider()
+    {
+        var handler = new FakeHttpHandler().Enqueue(HttpStatusCode.Created, SamlConnectionJson);
+        using var client = CreateClient(handler);
+
+        var connection = await client.SamlConnections.CreateAsync(new CreateSamlConnectionRequest(
+            "Acme", [new SamlDomain("acme.com.br", EnforceSso: true)],
+            IdpMetadataUrl: "https://login.microsoftonline.com/abc/federationmetadata.xml"));
+
+        var (request, body) = Assert.Single(handler.Calls);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal("https://id.example.com/api/v1/saml-connections", request.RequestUri!.ToString());
+        using var json = JsonDocument.Parse(body!);
+        Assert.True(json.RootElement.GetProperty("domains")[0].GetProperty("enforceSso").GetBoolean());
+        Assert.False(json.RootElement.TryGetProperty("idpMetadataXml", out _));
+        Assert.Equal("https://acme.accounts.genera.ia.br/saml/7c9e6679-7425-40de-944b-e07fc1f90ae7/acs",
+            connection.ServiceProvider.AcsUrls[0]);
+        Assert.Equal("mail", connection.AttributeMapping!["email"]);
+    }
+
+    [Fact]
+    public async Task Monta_as_rotas_de_update_dominios_e_exclusao_da_conexao()
+    {
+        var id = Guid.Parse("7c9e6679-7425-40de-944b-e07fc1f90ae7");
+        var handler = new FakeHttpHandler()
+            .Enqueue(HttpStatusCode.OK, SamlConnectionJson)
+            .Enqueue(HttpStatusCode.OK, SamlConnectionJson)
+            .Enqueue(HttpStatusCode.NoContent);
+        using var client = CreateClient(handler);
+
+        await client.SamlConnections.UpdateAsync(id, new UpdateSamlConnectionRequest(TrustIdpMfa: true, OrganizationId: ""));
+        await client.SamlConnections.ReplaceDomainsAsync(id, [new SamlDomain("acme.com")]);
+        await client.SamlConnections.DeleteAsync(id);
+
+        Assert.Equal(HttpMethod.Patch, handler.Calls[0].Request.Method);
+        Assert.Equal($"https://id.example.com/api/v1/saml-connections/{id}", handler.Calls[0].Request.RequestUri!.ToString());
+        using (var update = JsonDocument.Parse(handler.Calls[0].Body!))
+        {
+            Assert.True(update.RootElement.GetProperty("trustIdpMfa").GetBoolean());
+            Assert.Equal("", update.RootElement.GetProperty("organizationId").GetString());
+            Assert.False(update.RootElement.TryGetProperty("name", out _));
+        }
+
+        Assert.Equal(HttpMethod.Put, handler.Calls[1].Request.Method);
+        Assert.EndsWith($"/saml-connections/{id}/domains", handler.Calls[1].Request.RequestUri!.ToString());
+        using (var domains = JsonDocument.Parse(handler.Calls[1].Body!))
+        {
+            Assert.Equal("acme.com", domains.RootElement.GetProperty("domains")[0].GetProperty("domain").GetString());
+        }
+
+        Assert.Equal(HttpMethod.Delete, handler.Calls[2].Request.Method);
+    }
+
+    [Fact]
+    public async Task Tenants_update_libera_o_SSO_pela_plataforma()
+    {
+        var tenantId = Guid.Parse("0f8fad5b-d9cb-469f-a165-70867728950e");
+        var handler = new FakeHttpHandler().Enqueue(HttpStatusCode.OK, """
+            {"id":"0f8fad5b-d9cb-469f-a165-70867728950e","slug":"acme","name":"Acme","status":"active",
+             "createdAt":"2026-08-30T00:00:00+00:00","brandingJson":null,"settingsJson":null,"customDomain":null,
+             "ssoEnabled":true}
+            """);
+        using var client = CreateClient(handler);
+
+        var tenant = await client.Tenants.UpdateAsync(tenantId, new UpdateTenantPlatformRequest(SsoEnabled: true));
+
+        var (request, body) = Assert.Single(handler.Calls);
+        Assert.Equal(HttpMethod.Patch, request.Method);
+        Assert.Equal($"https://id.example.com/api/v1/tenants/{tenantId}", request.RequestUri!.ToString());
+        Assert.Contains("\"ssoEnabled\":true", body);
+        Assert.True(tenant.SsoEnabled);
+    }
 }

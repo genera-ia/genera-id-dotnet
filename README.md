@@ -45,9 +45,17 @@ await generaId.Organizations.Memberships.AddAsync(org.Id, new CreateMembershipRe
 var invitation = await generaId.Organizations.Invitations.CreateAsync(
     org.Id, new CreateInvitationRequest("ana@acme.com", "member"));
 // invitation.Link aparece só na criação — use se não quiser depender só do e-mail
+
+// SSO corporativo (SAML): usuários da empresa entram pelo Entra ID/Okta/Google dela
+var sso = await generaId.SamlConnections.CreateAsync(new CreateSamlConnectionRequest(
+    "Acme (Entra ID)",
+    [new SamlDomain("acme.com.br", EnforceSso: true)],
+    IdpMetadataUrl: "https://login.microsoftonline.com/<tenant>/federationmetadata/2007-06/federationmetadata.xml",
+    OrganizationId: org.Id)); // quem entra pela conexão vira membro
+// cadastre no IdP: sso.ServiceProvider.EntityId e sso.ServiceProvider.AcsUrls
 ```
 
-Em apps ASP.NET, injete um `HttpClient` do `IHttpClientFactory` no segundo parâmetro do construtor. Recursos: `Tenant` (Get/Update/RotateKeys), `Tenants` (chave de plataforma), `ApiKeys`, `Applications`, `Webhooks`, `Organizations` (com `.Memberships` e `.Invitations`), `Users` (com `.ListOrganizationsAsync` e `.ResetMfaAsync`), `Audits`. Erros viram `GeneraIdException` com `StatusCode` e `Body`; `429`/`5xx` têm retry automático com backoff (configure com `MaxRetries`).
+Em apps ASP.NET, injete um `HttpClient` do `IHttpClientFactory` no segundo parâmetro do construtor. Recursos: `Tenant` (Get/Update/RotateKeys), `Tenants` (chave de plataforma), `ApiKeys`, `Applications`, `Webhooks`, `Organizations` (com `.Memberships` e `.Invitations`), `SamlConnections` (SSO corporativo; exige o recurso liberado no tenant), `Users` (com `.ListOrganizationsAsync` e `.ResetMfaAsync`), `Audits`. Com a chave de plataforma, `Tenants.UpdateAsync(id, new UpdateTenantPlatformRequest(SsoEnabled: true))` libera o SSO corporativo. Erros viram `GeneraIdException` com `StatusCode` e `Body`; `429`/`5xx` têm retry automático com backoff (configure com `MaxRetries`).
 
 ## Webhooks
 

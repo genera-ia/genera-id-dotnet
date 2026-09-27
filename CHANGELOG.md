@@ -2,6 +2,16 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/); versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.5.0] — 2026-09-27
+
+### Adicionado
+
+- `SamlConnectionsResource` (SSO corporativo, SAML): `List`/`Create`/`Get`/`Update`/`ReplaceDomains`/`Delete`. A conexão traz `ServiceProvider` (Entity ID, ACS e metadata para cadastrar no IdP), domínios com `EnforceSso`, `IdpMetadataUrl` com atualização diária e certificados com `RetireAt` durante a rotação, `TrustIdpMfa`, `OrganizationId`/`DefaultRole` (membership automática), `JitProvisioning`, `AttributeMapping` e `StableIdAttribute`. A conexão pode ser criada sem os dados do IdP (`IdpConfigured = false`), recebendo a metadata depois.
+- `Tenants.UpdateAsync(id, UpdateTenantPlatformRequest)` (chave de plataforma) e `Tenant.SsoEnabled`.
+- Novos eventos de webhook documentados: `samlConnection.created`, `samlConnection.updated`, `samlConnection.deleted`.
+
+Parâmetros novos entram no fim dos records, com valor padrão: o código existente continua compilando.
+
 ## [0.4.0] — 2026-09-23
 
 ### Adicionado
@@ -34,6 +44,7 @@ Parâmetros novos entram no fim dos records, com valor padrão: o código existe
 - Release inicial: cliente tipado da Management API (`Tenant`, `Tenants`, `ApiKeys`, `Applications`, `Webhooks`, `Users`, `Audits`), com retry automático em `429`/`5xx` (backoff configurável via `MaxRetries`) e erros tipados (`GeneraIdException`).
 - `WebhookSignature.Verify` — verificação de assinatura de webhooks (HMAC-SHA256, comparação de tempo constante, tolerância de timestamp configurável).
 
+[0.5.0]: https://github.com/genera-ia/genera-id-dotnet/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/genera-ia/genera-id-dotnet/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/genera-ia/genera-id-dotnet/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/genera-ia/genera-id-dotnet/compare/v0.1.0...v0.2.0
