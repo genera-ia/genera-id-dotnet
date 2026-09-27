@@ -353,7 +353,7 @@ public class GeneraIdClientTests
     }
 
     private const string SamlConnectionJson = """
-        {"id":"7c9e6679-7425-40de-944b-e07fc1f90ae7","name":"Acme","enabled":true,
+        {"id":"7c9e6679-7425-40de-944b-e07fc1f90ae7","name":"Acme","enabled":true,"idpConfigured":true,
          "idpEntityId":"https://sts.windows.net/abc/","idpSsoUrl":"https://login.microsoftonline.com/abc/saml2",
          "idpMetadataUrl":null,"metadataRefreshedAt":null,"metadataRefreshError":null,
          "idpCertificates":[{"thumbprint":"AB","subject":"CN=idp","notAfter":"2030-01-01T00:00:00+00:00","retireAt":null}],

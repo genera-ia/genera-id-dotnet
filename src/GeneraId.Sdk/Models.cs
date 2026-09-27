@@ -198,8 +198,9 @@ public sealed record SamlConnection(
     Guid Id,
     string Name,
     bool Enabled,
-    string IdpEntityId,
-    string IdpSsoUrl,
+    bool IdpConfigured,
+    string? IdpEntityId,
+    string? IdpSsoUrl,
     string? IdpMetadataUrl,
     DateTimeOffset? MetadataRefreshedAt,
     string? MetadataRefreshError,
@@ -217,7 +218,9 @@ public sealed record SamlConnection(
 
 /// <summary>
 /// Dados do IdP: <paramref name="IdpMetadataUrl"/> (HTTPS pública, atualizada todo dia),
-/// <paramref name="IdpMetadataXml"/> ou os três campos manuais.
+/// <paramref name="IdpMetadataXml"/> ou os três campos manuais — ou nenhum: a conexão nasce
+/// pendente (<see cref="SamlConnection.IdpConfigured"/> = false) e já devolve o ServiceProvider;
+/// a metadata vem depois, no UpdateAsync.
 /// </summary>
 /// <param name="AttributeMapping">Chaves: email, givenName, familyName, displayName → nome do atributo SAML.</param>
 /// <param name="StableIdAttribute">Atributo usado como chave estável no lugar do NameID (ex.: objectidentifier no Entra).</param>
