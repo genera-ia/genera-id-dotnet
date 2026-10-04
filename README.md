@@ -6,13 +6,13 @@ SDK oficial do [Genera ID](https://genera-id.onrender.com/docs) para .NET: clien
 
 Requisitos: .NET 8+. Sem dependências além da BCL.
 
+Para usar a Management API você precisa de um tenant e da chave `gid_sk_…` dele. O Genera ID não tem cadastro self-service: os tenants são criados pela equipe da Genera — [fale com vendas](mailto:contato@genera.ia.br?subject=Genera%20ID). A chave aparece uma única vez na criação; depois, gere outras no dashboard ou com `ApiKeys.CreateAsync`.
+
 ## Instalação
 
 ```bash
 dotnet add package GeneraId.Sdk
 ```
-
-Enquanto a primeira versão não sai no NuGet, referencie o projeto ou o repositório `genera-ia/genera-id-dotnet`.
 
 ## Management API
 
