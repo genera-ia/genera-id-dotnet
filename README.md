@@ -14,8 +14,6 @@ Para usar a Management API você precisa de um tenant e da chave `gid_sk_…` de
 dotnet add package GeneraId.Sdk
 ```
 
-Enquanto a primeira versão não sai no NuGet, referencie o projeto ou o repositório `genera-ia/genera-id-dotnet`.
-
 ## Management API
 
 ```csharp
