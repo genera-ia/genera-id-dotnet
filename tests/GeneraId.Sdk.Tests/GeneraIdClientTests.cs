@@ -272,6 +272,25 @@ public class GeneraIdClientTests
     }
 
     [Fact]
+    public async Task Convite_leva_a_application_de_destino_no_corpo_e_na_resposta()
+    {
+        var organizationId = Guid.NewGuid();
+        var handler = new FakeHttpHandler().Enqueue(HttpStatusCode.Created, $$"""
+            {"id":"{{Guid.NewGuid()}}","organizationId":"{{organizationId}}","email":"ana@acme.com","role":"member",
+             "status":"pending","expiresAt":"2026-09-08T00:00:00+00:00","createdAt":"2026-09-01T00:00:00+00:00",
+             "acceptedAt":null,"applicationClientId":"portal","link":"https://acme.accounts.genera.ia.br/x"}
+            """);
+        using var client = CreateClient(handler);
+
+        var invitation = await client.Organizations.Invitations.CreateAsync(
+            organizationId, new CreateInvitationRequest("ana@acme.com", "member", ApplicationClientId: "portal"));
+
+        var (_, body) = Assert.Single(handler.Calls);
+        Assert.Contains("\"applicationClientId\":\"portal\"", body);
+        Assert.Equal("portal", invitation.ApplicationClientId);
+    }
+
+    [Fact]
     public async Task Cria_convite_com_link_uma_unica_vez_e_revoga()
     {
         var organizationId = Guid.NewGuid();

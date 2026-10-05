@@ -179,9 +179,14 @@ public sealed record Invitation(
     DateTimeOffset ExpiresAt,
     DateTimeOffset CreatedAt,
     DateTimeOffset? AcceptedAt,
-    string? Link = null);
+    string? Link = null,
+    string? ApplicationClientId = null);
 
-public sealed record CreateInvitationRequest(string Email, string Role);
+/// <param name="ApplicationClientId">
+/// client_id de uma application do tenant: depois de aceitar, a tela oferece "Continuar para" ela.
+/// Nulo leva à conta no Genera ID.
+/// </param>
+public sealed record CreateInvitationRequest(string Email, string Role, string? ApplicationClientId = null);
 
 /// <summary>Domínio de e-mail atendido por uma conexão SAML (único por tenant).</summary>
 /// <param name="EnforceSso">true = domínio só entra por SSO: sem login, recuperação, cadastro ou troca de senha.</param>

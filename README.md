@@ -43,7 +43,7 @@ await generaId.Tenant.RotateKeysAsync(revokeOldKeysNow: true);
 var org = await generaId.Organizations.CreateAsync(new CreateOrganizationRequest("Acme Corp"));
 await generaId.Organizations.Memberships.AddAsync(org.Id, new CreateMembershipRequest(userId, "owner"));
 var invitation = await generaId.Organizations.Invitations.CreateAsync(
-    org.Id, new CreateInvitationRequest("ana@acme.com", "member"));
+    org.Id, new CreateInvitationRequest("ana@acme.com", "member", ApplicationClientId: "meu-app")); // app opcional
 // invitation.Link aparece só na criação — use se não quiser depender só do e-mail
 
 // SSO corporativo (SAML): usuários da empresa entram pelo Entra ID/Okta/Google dela
