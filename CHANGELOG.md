@@ -2,6 +2,12 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/); versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não lançado]
+
+### Adicionado
+
+- `CreateInvitationRequest.ApplicationClientId`: client_id de uma application do tenant para onde o convidado segue depois de aceitar ("Continuar para" na tela de aceite). `Invitation.ApplicationClientId` volta na listagem e na criação.
+
 ## [0.5.1] — 2026-10-04
 
 ### Documentação
